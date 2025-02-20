@@ -1,0 +1,11 @@
+# Ignore virtual environment folder
+.venv/
+
+# Ignore Python bytecode files
+__pycache__/
+
+# Ignore DC_Store files
+*/.DS_Store
+
+# Ignore ruff configuration file
+ruff.toml

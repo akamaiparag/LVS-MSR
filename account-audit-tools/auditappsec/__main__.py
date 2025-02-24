@@ -336,18 +336,21 @@ def policies_configuration(session, base_url, security_policy):
 
 
 def main():
+    # ARGUMENT PARSING SECTION 
     parser = argparse.ArgumentParser(
         description="Audit Security Policies",
         usage="python3 -m auditsec [-h] account",
         prog="auditsec",
     )
 
+    
     parser.add_argument("account", help="specifies the Akamai Account Name/ID")
     args = parser.parse_args()
     account = args.account
 
     config_path = Path.cwd() / "config.yaml"
-
+    
+    # READ FROM THE config.yaml file. 
     if config_path.exists():
         with open(config_path, "r") as config_file:
             config = yaml.safe_load(config_file)
@@ -365,6 +368,9 @@ def main():
         print("auditsec: error: file_not_found: /Account Audit Tools/config.yaml")
         return
 
+    #Prepare for the call to change to the account we want to run the report for. 
+    #We first read the Section in EdgeRC
+    #And prepare the Session and base_url variables. We already know the account we want to switch to 
     if EDGERC_PATH.exists():
         edgerc = EdgeRc(EDGERC_PATH)
         base_url = "https://%s" % edgerc.get(EDGERC_SECTION, "host")
@@ -375,7 +381,7 @@ def main():
     else:
         print(f"auditsec: error: file_not_found: {EDGERC_PATH}")
         return
-
+    #Switch the identity to the account
     response = identity.account_switch_keys(session, base_url, account)
 
     if response.status_code == 200:
@@ -416,6 +422,7 @@ def main():
 
     session.params = {"accountSwitchKey": account_switch_key}
 
+    #Get all the configurations
     response = appsec.configs(session, base_url)
 
     if response.status_code == 200:
@@ -426,6 +433,7 @@ def main():
         print("auditsec: error: invalid_api_access: appsec")
         return
 
+    # Get the hostname coverage
     response = appsec.hostname_coverage(session, base_url)
 
     if response.status_code == 200:
@@ -445,6 +453,9 @@ def main():
         print("auditsec: error: invalid_api_access: client-list")
         return
 
+    #this is an important call.
+    #Essentially the call is being made to a method "shared_resources" in parallel 5 times with parameters as
+    #session, base_url, and each successive value in the configurations collection.
     with ThreadPoolExecutor(max_workers=5) as executor:
         results = list(executor.map(shared_resources, [session] * len(configurations), [base_url] * len(configurations), configurations))
 
@@ -534,10 +545,14 @@ def main():
     OUTPUT_PATH = OUTPUT_DIRECTORY / f"[{current_date}] [APPSEC] {account_name.split('_')[0]}.xlsx"
 
     hostname_coverage = dataframes.hostname_coverage(hostname_coverage)
+    waf_attackgroups = dataframes.waf_attackgroups(policy_settings)
+    hostname_waf_attackgroups = dataframes.generate_hostname_waf_attackgroups(hostname_coverage, waf_attackgroups)
+
+
     advanced_settings = dataframes.advanced_settings(policy_settings)
     ipgeo_firewall = dataframes.ipgeo_firewall(policy_settings, client_lists)
     dos_protection = dataframes.dos_protection(policy_settings, rate_policies, url_protections)
-    waf_attackgroups = dataframes.waf_attackgroups(policy_settings)
+
     client_reputation = dataframes.client_reputation(policy_settings, reputation_profiles)
     akamai_bots = dataframes.akamai_bots(policy_settings)
     bot_detections = dataframes.bot_detections(policy_settings)
@@ -551,7 +566,8 @@ def main():
     ipgeo_firewall.to_excel(writer, sheet_name="IpGeo Firewall", index=False)
     dos_protection.to_excel(writer, sheet_name="DoS Protection", index=False)
     waf_attackgroups.to_excel(writer, sheet_name="Web Application Firewall", index=False)
-    
+    hostname_waf_attackgroups.to_excel(writer, sheet_name="Host Coverage for WAF", index=False)
+
     if not client_reputation.empty:
         client_reputation.to_excel(writer, sheet_name="Client Reputation", index=False)
     

@@ -776,3 +776,69 @@ def endpoint_protection(endpoint_coverage, api_search):
         ]
 
     return df1
+
+
+def generate_hostname_waf_attackgroups(hostname_coverage: pd.DataFrame, waf_attackgroups: pd.DataFrame) -> pd.DataFrame:
+    """
+    Performs a cartesian product (cross join) between hostname_coverage and waf_attackgroups
+    on matching 'SecurityPolicies' and 'SecurityPolicy' fields, returning the final DataFrame
+    with the specified column order.
+    """
+
+
+
+
+    # Remove trailing pattern [(alphabets)_(numbers)] from 'Security Policy' column
+    waf_attackgroups["Security Policy"] = waf_attackgroups["Security Policy"].str.replace(
+        r'\[([a-zA-Z]+)_\d+\]$', '', regex=True)
+
+    hostname_coverage.columns = hostname_coverage.columns.str.strip()
+    waf_attackgroups.columns = waf_attackgroups.columns.str.strip()
+
+    # Remove spaces from actual values in "Security Policy"
+    waf_attackgroups["Security Policy"] = waf_attackgroups["Security Policy"].str.strip()
+
+    # Also clean up hostname_coverage
+    hostname_coverage["Security Policies"] = hostname_coverage["Security Policies"].str.strip()
+
+    # Perform the cross join based on matching security policy fields
+    hostname_waf_attackgroups = hostname_coverage.merge(
+        waf_attackgroups,
+        left_on="Security Policies",  # Column in hostname_coverage
+        right_on="Security Policy",  # Column in waf_attackgroups
+        how="inner",  # Keeps only matching records
+        suffixes=("_host", "_waf")  # Prevents column name conflicts
+    )
+
+    print(f"The number of rows in the host name+waf attack groups data frame, AFTER merge is {len(hostname_waf_attackgroups)}")
+    print(hostname_waf_attackgroups.keys)
+
+
+
+
+
+    # Define the required column order
+    column_order = [
+        "Hostname",
+        "Security Configuration_host",
+        "Security Policy",
+        "Web Application Firewall",
+        "Management Mode",
+        "Latest Update",
+        "Command Injection",
+        "Cross Site Scripting",
+        "Local File Inclusion",
+        "Remote File Inclusion",
+        "SQL Injection",
+        "Total Outbound",
+        "Web Attack Tool",
+        "Web Platform Attack",
+        "Web Policy Violation",
+        "Web Protocol Attack",
+        "Penalty Box",
+    ]
+
+    # Ensure the final DataFrame contains only the specified columns
+    hostname_waf_attackgroups = hostname_waf_attackgroups[column_order]
+
+    return hostname_waf_attackgroups

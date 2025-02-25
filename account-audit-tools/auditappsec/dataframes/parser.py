@@ -810,13 +810,6 @@ def generate_hostname_waf_attackgroups(hostname_coverage: pd.DataFrame, waf_atta
         suffixes=("_host", "_waf")  # Prevents column name conflicts
     )
 
-    print(f"The number of rows in the host name+waf attack groups data frame, AFTER merge is {len(hostname_waf_attackgroups)}")
-    print(hostname_waf_attackgroups.keys)
-
-
-
-
-
     # Define the required column order
     column_order = [
         "Hostname",
@@ -842,3 +835,87 @@ def generate_hostname_waf_attackgroups(hostname_coverage: pd.DataFrame, waf_atta
     hostname_waf_attackgroups = hostname_waf_attackgroups[column_order]
 
     return hostname_waf_attackgroups
+
+def getColumnOrder(mergeOperation: str):
+    columnOrder = []
+    if mergeOperation == "hostCoverageAndWAF":
+        column_order = [
+            "Hostname",
+            "Security Configuration_host",
+            "Security Policy",
+            "Web Application Firewall",
+            "Management Mode",
+            "Latest Update",
+            "Command Injection",
+            "Cross Site Scripting",
+            "Local File Inclusion",
+            "Remote File Inclusion",
+            "SQL Injection",
+            "Total Outbound",
+            "Web Attack Tool",
+            "Web Platform Attack",
+            "Web Policy Violation",
+            "Web Protocol Attack",
+            "Penalty Box",
+        ]
+    elif mergeOperation == "HostNameAndDos":
+        column_order = [
+            "Hostname",
+            "Security Configuration_host",
+            "Security Policy",
+            "Rate Limiting Policies",
+            "Rate Controls in Alert",
+            "Rate Controls in Deny",
+            "Not Used Rate Controls",
+            "URL Protection Rules",
+            "URL Protection Rules in Alert",
+            "URL Protection Rules in Deny",
+            "Not Used URL Protection Rules",
+            "Slow POST Protection"
+        ]
+
+    return column_order
+
+def generate_merged_dataframe(df1: pd.DataFrame, df2: pd.DataFrame, left_on: str, right_on: str, merge_type: str) -> pd.DataFrame:
+    """
+    Performs a cartesian product (cross join) between df1 and df2
+    on matching fields provided as parameters, returning the final DataFrame
+    with the specified column order.
+    """
+
+    # Remove trailing pattern [(alphabets)_(numbers)] from the right_on column in df2
+    df2[right_on] = df2[right_on].str.replace(r'\[([a-zA-Z]+)_\d+\]$', '', regex=True)
+
+    # Strip spaces from column names
+    df1.columns = df1.columns.str.strip()
+    df2.columns = df2.columns.str.strip()
+
+    # Remove spaces from actual values in the join columns
+    df1[left_on] = df1[left_on].str.strip()
+    df2[right_on] = df2[right_on].str.strip()
+
+    # Perform the cross join based on matching fields
+    merged_df = df1.merge(
+        df2,
+        left_on=left_on,
+        right_on=right_on,
+        how="inner",
+        suffixes=("_host", "_dos")  # Prevents column name conflicts
+    )
+
+    # Ensure the final DataFrame contains only the specified columns
+    # Select first two columns from df1
+    first_two_columns_df1 = ["Hostname"] + ["Security Configuration_host"] + ["Security Policy"]
+
+
+    # Select all columns from df2 except the first one
+    remaining_columns_df2 = list(df2.columns[2:])
+
+    # Combine selected columns
+    final_columns = first_two_columns_df1 + remaining_columns_df2
+
+
+    merged_df = merged_df[final_columns]
+
+    return merged_df
+

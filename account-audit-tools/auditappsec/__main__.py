@@ -546,27 +546,58 @@ def main():
 
     hostname_coverage = dataframes.hostname_coverage(hostname_coverage)
     waf_attackgroups = dataframes.waf_attackgroups(policy_settings)
-    hostname_waf_attackgroups = dataframes.generate_hostname_waf_attackgroups(hostname_coverage, waf_attackgroups)
-
+    #hostname_waf_attackgroups = dataframes.generate_hostname_waf_attackgroups(hostname_coverage, waf_attackgroups)
+    hostname_waf_attackgroups = dataframes.generate_merged_dataframe(hostname_coverage,
+                                                                   waf_attackgroups,
+                                                                   "Security Policies",
+                                                                   "Security Policy",
+                                                                   "HostNameAndDos")
+    dos_protection = dataframes.dos_protection(policy_settings, rate_policies, url_protections)
+    hostname_dos_protection = dataframes.generate_merged_dataframe(hostname_coverage,
+                                                                   dos_protection,
+                                                                   "Security Policies",
+                                                                   "Security Policy",
+                                                                   "HostNameAndDos")
 
     advanced_settings = dataframes.advanced_settings(policy_settings)
     ipgeo_firewall = dataframes.ipgeo_firewall(policy_settings, client_lists)
-    dos_protection = dataframes.dos_protection(policy_settings, rate_policies, url_protections)
+
 
     client_reputation = dataframes.client_reputation(policy_settings, reputation_profiles)
     akamai_bots = dataframes.akamai_bots(policy_settings)
     bot_detections = dataframes.bot_detections(policy_settings)
+    hostname_unknown_bot_protection = dataframes.generate_merged_dataframe(hostname_coverage,
+                                                                   bot_detections,
+                                                                   "Security Policies",
+                                                                   "Security Policy",
+                                                                   "HostName Unknown Bots")
+
+
+
     endpoint_protection = dataframes.endpoint_protection(endpoint_coverage, api_search)
 
     writer = pd.ExcelWriter(OUTPUT_PATH, engine="xlsxwriter")
     workbook = writer.book
 
-    hostname_coverage.to_excel(writer, sheet_name="Hostname Coverage", index=False)
-    advanced_settings.to_excel(writer, sheet_name="Advanced Settings", index=False)
-    ipgeo_firewall.to_excel(writer, sheet_name="IpGeo Firewall", index=False)
-    dos_protection.to_excel(writer, sheet_name="DoS Protection", index=False)
-    waf_attackgroups.to_excel(writer, sheet_name="Web Application Firewall", index=False)
+    #hostname_coverage.to_excel(writer, sheet_name="Hostname Coverage", index=False)
+    #advanced_settings.to_excel(writer, sheet_name="Advanced Settings", index=False)
+    #ipgeo_firewall.to_excel(writer, sheet_name="IpGeo Firewall", index=False)
+    #dos_protection.to_excel(writer, sheet_name="DoS Protection", index=False)
+    #waf_attackgroups.to_excel(writer, sheet_name="Web Application Firewall", index=False)
+
+    # Hosts and their WAF Protections
     hostname_waf_attackgroups.to_excel(writer, sheet_name="Host Coverage for WAF", index=False)
+
+    #Hosts and their DOS Protections
+    hostname_dos_protection.to_excel(writer, sheet_name="Host Coverage for DOS", index=False)
+
+
+
+    if not hostname_unknown_bot_protection.empty:
+        # Hosts and their Unknown Bot Protections
+        hostname_unknown_bot_protection.to_excel(writer, sheet_name="Host - Unknown Bots", index=False)
+    else:
+        print("Unknown bots empty")
 
     if not client_reputation.empty:
         client_reputation.to_excel(writer, sheet_name="Client Reputation", index=False)
@@ -599,7 +630,7 @@ def main():
     neutral_format.set_bg_color("#FEEB9C")
     neutral_format.set_border()
     neutral_format.set_border_color("#9C5700")
-
+    '''
     worksheet = workbook.get_worksheet_by_name("Hostname Coverage")
     worksheet.conditional_format(f"A2:E{worksheet.dim_rowmax+1}", {"type": "formula", "criteria": "=ISBLANK($E2)", "format": bad_format})
 
@@ -621,7 +652,7 @@ def main():
     worksheet.conditional_format(f"H2:H{worksheet.dim_rowmax+1}", {"type": "formula", "criteria": '=AND($G2="On",NOT($H2=""))', "format": bad_format})
     worksheet.conditional_format(f"K2:K{worksheet.dim_rowmax+1}", {"type": "text", "criteria": "containing", "value": "Not Used", "format": bad_format})
     worksheet.conditional_format(f"K2:K{worksheet.dim_rowmax+1}", {"type": "text", "criteria": "containing", "value": "Alert", "format": neutral_format})
-
+    
     worksheet = workbook.get_worksheet_by_name("Web Application Firewall")
     worksheet.conditional_format(f"C2:C{worksheet.dim_rowmax+1}", {"type": "text", "criteria": "containing", "value": "Off", "format": bad_format})
     worksheet.conditional_format(f"D2:D{worksheet.dim_rowmax+1}", {"type": "text", "criteria": "containing", "value": "Kona Rule Set", "format": bad_format})
@@ -629,7 +660,7 @@ def main():
     worksheet.conditional_format(f"F2:O{worksheet.dim_rowmax+1}", {"type": "text", "criteria": "containing", "value": "Alert", "format": bad_format})
     worksheet.conditional_format(f"F2:J{worksheet.dim_rowmax+1}", {"type": "text", "criteria": "containing", "value": "Not Used", "format": bad_format})
     worksheet.conditional_format(f"L2:P{worksheet.dim_rowmax+1}", {"type": "text", "criteria": "containing", "value": "Not Used", "format": bad_format})
-
+    '''
     if not client_reputation.empty:
         worksheet = workbook.get_worksheet_by_name("Client Reputation")
         worksheet.conditional_format(f"C2:C{worksheet.dim_rowmax+1}", {"type": "text", "criteria": "containing", "value": "Off", "format": bad_format})

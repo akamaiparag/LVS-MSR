@@ -916,6 +916,7 @@ def generate_merged_dataframe(df1: pd.DataFrame, df2: pd.DataFrame, left_on: str
 
 
     merged_df = merged_df[final_columns]
+    merged_df = merged_df.rename(columns={"Security Configuration_host": "Security Configuration"})
 
     return merged_df
 

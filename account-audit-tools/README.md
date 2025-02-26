@@ -29,3 +29,4 @@ The license under which the project is distributed.
 ## Contact
 
 Ways to contact the project maintainers for questions or support.
+git ls-tree -r v1.0 --name-only
